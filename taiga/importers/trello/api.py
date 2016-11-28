@@ -51,7 +51,9 @@ class TrelloImporterViewSet(viewsets.ViewSet):
         project_id = request.QUERY_PARAMS.get('project')
         options = None
         importer = TrelloImporter(request.user, token)
-        importer.import_project(project_id, options)
+        project = importer.import_project(project_id)
+        return response.Ok(project)
+
 
     @list_route(methods=["GET"])
     def auth_url(self, request, *args, **kwargs):

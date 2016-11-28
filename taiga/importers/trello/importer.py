@@ -1,3 +1,21 @@
+# -*- coding: utf-8 -*-
+# Copyright (C) 2014-2016 Andrey Antukh <niwi@niwi.nz>
+# Copyright (C) 2014-2016 Jesús Espino <jespinog@gmail.com>
+# Copyright (C) 2014-2016 David Barragán <bameda@dbarragan.com>
+# Copyright (C) 2014-2016 Alejandro Alonso <alejandro.alonso@kaleidos.net>
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from requests_oauthlib import OAuth1Session, OAuth1
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -6,6 +24,7 @@ import requests
 import webcolors
 
 from django.template.defaultfilters import slugify
+from taiga.projects.services import projects as projects_service
 from taiga.projects.models import Project, ProjectTemplate, Membership
 from taiga.projects.userstories.models import UserStory
 from taiga.projects.tasks.models import Task
@@ -21,6 +40,8 @@ from taiga.projects.custom_attributes.models import UserStoryCustomAttribute
 from taiga.mdrender.service import render as mdrender
 from taiga.timeline.rebuilder import rebuild_timeline
 from taiga.timeline.models import Timeline
+
+from taiga.base import exceptions
 
 
 class TrelloClient:
@@ -150,13 +171,17 @@ class TrelloImporter:
             color = self._ensure_hex_color(label['color'])
             tags_colors.append([name, color])
 
-        project = Project.objects.create(
+        project = Project(
             name=board['name'],
             description=board['desc'],
             owner=self._user,
             tags_colors=tags_colors,
             creation_template=project_template
         )
+        (can_create, error_message) = projects_service.check_if_project_can_be_created_or_updated(project)
+        if not can_create:
+            raise exceptions.NotEnoughSlotsForProject(project.is_private, 1, error_message)
+        project.save()
 
         if board.get('organization', None):
             trello_avatar_template = "https://trello-logos.s3.amazonaws.com/{}/170.png"
