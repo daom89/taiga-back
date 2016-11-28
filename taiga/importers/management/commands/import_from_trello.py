@@ -19,7 +19,7 @@
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 
-from taiga.importers.trello import TrelloImporter
+from taiga.importers.trello.importer import TrelloImporter
 from taiga.users.models import User
 from taiga.projects.services import projects as service
 
