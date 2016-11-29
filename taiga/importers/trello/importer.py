@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from django.utils.translation import ugettext as _
+
 from requests_oauthlib import OAuth1Session, OAuth1
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -24,6 +26,7 @@ import requests
 import webcolors
 
 from django.template.defaultfilters import slugify
+from taiga.base import exceptions as exc
 from taiga.projects.services import projects as projects_service
 from taiga.projects.models import Project, ProjectTemplate, Membership
 from taiga.projects.userstories.models import UserStory
@@ -49,11 +52,14 @@ class TrelloClient:
         self.api_key = api_key
         self.api_secret = api_secret
         self.token = token
-        self.oauth = OAuth1(
-            client_key=self.api_key,
-            client_secret=self.api_secret,
-            resource_owner_key=self.token
-        )
+        if self.token:
+            self.oauth = OAuth1(
+                client_key=self.api_key,
+                client_secret=self.api_secret,
+                resource_owner_key=self.token
+            )
+        else:
+            self.oauth = None
 
     def get(self, uri_path, query_params=None):
         headers = {'Accept': 'application/json'}
@@ -66,10 +72,16 @@ class TrelloClient:
 
         response = requests.get(url, params=query_params, headers=headers, auth=self.oauth)
 
+        if response.status_code == 400:
+            raise exc.WrongArguments(_("Invalid Request: %s at %s") % (response.text, url))
         if response.status_code == 401:
-            raise Exception("Unauthorized: %s at %s" % (response.text, url), response)
+            raise exc.AuthenticationFailed(_("Unauthorized: %s at %s") % (response.text, url))
+        if response.status_code == 403:
+            raise exc.PermissionDenied(_("Unauthorized: %s at %s") % (response.text, url))
+        if response.status_code == 404:
+            raise exc.NotFound(_("Resource Unavailable: %s at %s") % (response.text, url))
         if response.status_code != 200:
-            raise Exception("Resource Unavailable: %s at %s" % (response.text, url), response)
+            raise exc.WrongArguments(_("Resource Unavailable: %s at %s") % (response.text, url))
 
         return response.json()
 
@@ -89,7 +101,7 @@ class TrelloImporter:
     def list_users(self, project_id):
         return self._client.get("/board/{}/members".format(project_id), {"fields": "id,fullName"})
 
-    def import_project(self, project_id, options={"template": "kanban", "import_closed_data": False, "users_bindings": {}, "keep_external_reference": False}):
+    def import_project(self, project_id, options):
         data = self._client.get(
             "/board/{}".format(project_id),
             {
@@ -119,7 +131,7 @@ class TrelloImporter:
         board = data
         labels = board['labels']
         statuses = board['lists']
-        project_template = ProjectTemplate.objects.get(slug=options['template'])
+        project_template = ProjectTemplate.objects.get(slug=options.get('template', "kanban")])
         project_template.us_statuses = []
         counter = 0
         for us_status in statuses:

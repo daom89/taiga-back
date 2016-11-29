@@ -13,32 +13,39 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from django.utils.translation import ugettext as _
+
 from taiga.base.api import viewsets
 from taiga.base import response
+from taiga.base import exceptions as exc
 from taiga.base.decorators import list_route
+from taiga.users.models import AuthData
 
 from .importer import TrelloImporter
-from . import permissions
+from . import permissions, tasks
 
 
 class TrelloImporterViewSet(viewsets.ViewSet):
     permission_classes = (permissions.ImporterPermission,)
 
-    @list_route(methods=["GET"])
+    @list_route(methods=["POST"])
     def list_users(self, request, *args, **kwargs):
         self.check_permissions(request, "list_users", None)
 
-        token = request.QUERY_PARAMS.get('token')
-        project_id = request.QUERY_PARAMS.get('project')
+        token = request.DATA.get('token', None)
+        project_id = request.DATA.get('project', None)
+
+        if not project_id:
+            raise exc.WrongArguments(_("The project param is needed"))
+
         importer = TrelloImporter(request.user, token)
         users = importer.list_users(project_id)
         return response.Ok(users)
 
-    @list_route(methods=["GET"])
+    @list_route(methods=["POST"])
     def list_projects(self, request, *args, **kwargs):
         self.check_permissions(request, "list_projects", None)
-
-        token = request.QUERY_PARAMS.get('token')
+        token = request.QUERY_PARAMS.get('token', None)
         importer = TrelloImporter(request.user, token)
         projects = importer.list_projects()
         return response.Ok(projects)
@@ -47,11 +54,23 @@ class TrelloImporterViewSet(viewsets.ViewSet):
     def import_project(self, request, *args, **kwargs):
         self.check_permissions(request, "import_project", None)
 
-        token = request.QUERY_PARAMS.get('token')
-        project_id = request.QUERY_PARAMS.get('project')
-        options = None
+        token = request.DATA.get('token', None)
+        project_id = request.DATA.get('project', None)
+        if not project_id:
+            raise exc.WrongArguments(_("The project param is needed"))
+
+        options = {
+            "template": request.DATA.get('template', "kanban"),
+            "users_bindings": request.DATA.get("users_bindings", {}),
+            "keep_external_reference": request.DATA.get("keep_external_reference", False),
+        }
+
+        if settings.CELERY_ENABLED:
+            task = tasks.import_project.delay(request.user, token, project_id, options)
+            return response.Accepted({"trello_import_id": task.id})
+
         importer = TrelloImporter(request.user, token)
-        project = importer.import_project(project_id)
+        project = importer.import_project(project_id, options)
         return response.Ok(project)
 
 
@@ -60,19 +79,37 @@ class TrelloImporterViewSet(viewsets.ViewSet):
         self.check_permissions(request, "auth_url", None)
 
         (oauth_token, oauth_secret, url) = TrelloImporter.get_auth_url()
-        return response.Ok({
+
+        (auth_data, created) = AuthData.objects.get_or_create(
+            user=request.user,
+            key="trello-oauth",
+            defaults={
+                "value": "",
+                "extra": {},
+            }
+        )
+        auth_data.extra = {
             "oauth_token": oauth_token,
             "oauth_secret": oauth_secret,
-            "url": url,
-        })
+        }
+        auth_data.save()
+
+        return response.Ok({"url": url})
 
     @list_route(methods=["POST"])
     def authorize(self, request, *args, **kwargs):
-        oauth_token = request.QUERY_PARAMS.get('oauth_token')
-        oauth_secret = request.QUERY_PARAMS.get('oauth_secret')
-        oauth_verifier = request.QUERY_PARAMS.get('oauth_verifier')
         self.check_permissions(request, "authorize", None)
 
+        try:
+            oauth_data = request.user.auth_data.get(key="trello-oauth")
+            oauth_token = oauth_data.extra['oauth_token']
+            oauth_secret = oauth_data.extra['oauth_secret']
+            oauth_verifier = request.QUERY_PARAMS.get('oauth_verifier')
+            oauth_data.delete()
+            trello_token = TrelloImporter.get_access_token(oauth_token, oauth_secret, oauth_verifier)['oauth_token']
+        except Exception:
+            raise exc.WrongArguments(_("Invalid or expired auth token"))
+
         return response.Ok({
-            "token": TrelloImporter.get_access_token(oauth_token, oauth_secret, oauth_verifier)
+            "token": trello_token
         })
