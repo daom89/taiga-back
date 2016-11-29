@@ -556,6 +556,15 @@ MAX_PENDING_MEMBERSHIPS = 30 # Max number of unconfirmed memberships in a projec
 from .sr import *
 
 
+TRELLO_API_KEY = ""
+TRELLO_SECRET_KEY = ""
+
+ASANA_CLIENT_ID = ""
+ASANA_CLIENT_SECRET = ""
+
+JIRA_CONSUMER_KEY = ""
+JIRA_CERT_FILE = ""
+
 # NOTE: DON'T INSERT MORE SETTINGS AFTER THIS LINE
 TEST_RUNNER="django.test.runner.DiscoverRunner"
 
