@@ -131,7 +131,7 @@ class TrelloImporter:
         board = data
         labels = board['labels']
         statuses = board['lists']
-        project_template = ProjectTemplate.objects.get(slug=options.get('template', "kanban")])
+        project_template = ProjectTemplate.objects.get(slug=options.get('template', "kanban"))
         project_template.us_statuses = []
         counter = 0
         for us_status in statuses:
