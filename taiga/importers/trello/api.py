@@ -14,6 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from django.utils.translation import ugettext as _
+from django.conf import settings
 
 from taiga.base.api import viewsets
 from taiga.base import response

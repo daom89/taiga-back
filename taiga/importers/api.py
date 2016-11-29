@@ -14,25 +14,26 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from taiga.base.api import viewsets
+from taiga.base.decorators import list_route
 
 
 class BaseImporterViewSet(viewsets.ViewSet):
-    @detail_route(methods=["GET"])
+    @list_route(methods=["GET"])
     def list_users(self, request, *args, **kwargs):
         raise NotImplementedError
 
-    @detail_route(methods=["GET"])
+    @list_route(methods=["GET"])
     def list_projects(self, request, *args, **kwargs):
         raise NotImplementedError
 
-    @detail_route(methods=["POST"])
+    @list_route(methods=["POST"])
     def import_project(self, request, *args, **kwargs):
         raise NotImplementedError
 
-    @detail_route(methods=["GET"])
+    @list_route(methods=["GET"])
     def auth_url(self, request, *args, **kwargs):
         raise NotImplementedError
 
-    @detail_route(methods=["POST"])
+    @list_route(methods=["POST"])
     def authorize(self, request, *args, **kwargs):
         raise NotImplementedError

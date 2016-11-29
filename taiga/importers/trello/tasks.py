@@ -23,6 +23,7 @@ from django.utils.translation import ugettext as _
 
 from taiga.base.mails import mail_builder
 from taiga.celery import app
+from .importer import TrelloImporter
 
 logger = logging.getLogger('taiga.importers.trello')
 
