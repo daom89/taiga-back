@@ -23,6 +23,7 @@ urls = {
     "login": "/login",
     "register": "/register",
     "forgot-password": "/forgot-password",
+    "new-project": "/project/new",
 
     "change-password": "/change-password/{0}", # user.token
     "change-email": "/change-email/{0}", # user.email_token

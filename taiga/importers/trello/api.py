@@ -46,7 +46,7 @@ class TrelloImporterViewSet(viewsets.ViewSet):
     @list_route(methods=["POST"])
     def list_projects(self, request, *args, **kwargs):
         self.check_permissions(request, "list_projects", None)
-        token = request.QUERY_PARAMS.get('token', None)
+        token = request.DATA.get('token', None)
         importer = TrelloImporter(request.user, token)
         projects = importer.list_projects()
         return response.Ok(projects)
@@ -105,10 +105,10 @@ class TrelloImporterViewSet(viewsets.ViewSet):
             oauth_data = request.user.auth_data.get(key="trello-oauth")
             oauth_token = oauth_data.extra['oauth_token']
             oauth_secret = oauth_data.extra['oauth_secret']
-            oauth_verifier = request.QUERY_PARAMS.get('oauth_verifier')
+            oauth_verifier = request.DATA.get('code')
             oauth_data.delete()
             trello_token = TrelloImporter.get_access_token(oauth_token, oauth_secret, oauth_verifier)['oauth_token']
-        except Exception:
+        except Exception as e:
             raise exc.WrongArguments(_("Invalid or expired auth token"))
 
         return response.Ok({

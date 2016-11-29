@@ -43,6 +43,7 @@ from taiga.projects.custom_attributes.models import UserStoryCustomAttribute
 from taiga.mdrender.service import render as mdrender
 from taiga.timeline.rebuilder import rebuild_timeline
 from taiga.timeline.models import Timeline
+from taiga.front.templatetags.functions import resolve as resolve_front_url
 
 from taiga.base import exceptions
 
@@ -89,6 +90,7 @@ class TrelloClient:
 class TrelloImporter:
     def __init__(self, user, token):
         self._user = user
+        self._cached_orgs = {}
         self._client = TrelloClient(
             api_key=settings.TRELLO_API_KEY,
             api_secret=settings.TRELLO_SECRET_KEY,
@@ -96,7 +98,30 @@ class TrelloImporter:
         )
 
     def list_projects(self):
-        return self._client.get("/members/me/boards", {"fields": "id,name"})
+        projects_data = self._client.get("/members/me/boards", {
+            "fields": "id,name,desc,prefs,idOrganization",
+            "organization": "true",
+            "organization_fields": "prefs",
+        })
+        projects = []
+        for project in projects_data:
+            is_private = False
+            if project['prefs']['permissionLevel'] == "private":
+                is_private = True
+
+            if project['prefs']['permissionLevel'] == "org":
+                if 'organization' not in project:
+                    is_private = True
+                elif project['organization']['prefs']['permissionLevel'] == "private":
+                    is_private = True
+
+            projects.append({
+                "id": project['id'],
+                "name": project['name'],
+                "description": project['desc'],
+                "is_private": project['prefs']['permissionLevel'] != "public",
+            })
+        return projects
 
     def list_users(self, project_id):
         return self._client.get("/board/{}/members".format(project_id), {"fields": "id,fullName"})
@@ -454,6 +479,7 @@ class TrelloImporter:
     def get_auth_url(cls):
         request_token_url = 'https://trello.com/1/OAuthGetRequestToken'
         authorize_url = 'https://trello.com/1/OAuthAuthorizeToken'
+        return_url = resolve_front_url("new-project") + "?from=trello"
         expiration = "1day"
         scope = "read,write,account"
         trello_key = settings.TRELLO_API_KEY
@@ -467,12 +493,13 @@ class TrelloImporter:
         return (
             oauth_token,
             oauth_token_secret,
-            "{authorize_url}?oauth_token={oauth_token}&scope={scope}&expiration={expiration}&name={name}".format(
+            "{authorize_url}?oauth_token={oauth_token}&scope={scope}&expiration={expiration}&name={name}&return_url={return_url}".format(
                 authorize_url=authorize_url,
                 oauth_token=oauth_token,
                 expiration=expiration,
                 scope=scope,
                 name=name,
+                return_url=return_url,
             )
         )
 
