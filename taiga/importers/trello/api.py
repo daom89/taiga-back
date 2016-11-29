@@ -64,6 +64,7 @@ class TrelloImporterViewSet(viewsets.ViewSet):
             "template": request.DATA.get('template', "kanban"),
             "users_bindings": request.DATA.get("users_bindings", {}),
             "keep_external_reference": request.DATA.get("keep_external_reference", False),
+            "is_private": request.DATA.get("is_private", False),
         }
 
         if settings.CELERY_ENABLED:

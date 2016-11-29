@@ -213,7 +213,8 @@ class TrelloImporter:
             description=board['desc'],
             owner=self._user,
             tags_colors=tags_colors,
-            creation_template=project_template
+            creation_template=project_template,
+            is_private=options.get('is_private', False),
         )
         (can_create, error_message) = projects_service.check_if_project_can_be_created_or_updated(project)
         if not can_create:
