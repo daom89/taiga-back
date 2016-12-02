@@ -46,7 +46,7 @@ def test_auth_url(client):
 
     assert response.status_code == 200
     assert 'url' in response.data
-    assert response.data['url'] == "https://trello.com/1/OAuthAuthorizeToken?oauth_token=token&scope=read,write,account&expiration=1day&name=Taiga"
+    assert response.data['url'] == "https://trello.com/1/OAuthAuthorizeToken?oauth_token=token&scope=read,write,account&expiration=1day&name=Taiga&return_url=http://localhost:9001/project/new?from=trello"
 
 
 def test_authorize(client):
@@ -114,13 +114,16 @@ def test_import_trello_list_users(client, settings):
 
     with mock.patch('taiga.importers.trello.api.TrelloImporter') as TrelloImporterMock:
         instance = mock.Mock()
-        instance.list_users.return_value = ["user1", "user2"]
+        instance.list_users.return_value = [
+            {"id": 1, "fullName": "user1", "email": None},
+            {"id": 2, "fullName": "user2", "email": None}
+        ]
         TrelloImporterMock.return_value = instance
         response = client.post(url, content_type="application/json", data=json.dumps({"token": "token", "project": 1}))
 
     assert response.status_code == 200
-    assert response.data[0] == "user1"
-    assert response.data[1] == "user2"
+    assert response.data[0]["id"] == 1
+    assert response.data[1]["id"] == 2
 
 
 def test_import_trello_list_users_without_project(client, settings):
@@ -131,7 +134,10 @@ def test_import_trello_list_users_without_project(client, settings):
 
     with mock.patch('taiga.importers.trello.api.TrelloImporter') as TrelloImporterMock:
         instance = mock.Mock()
-        instance.list_users.return_value = [{"user": "user1"}, {"user": "user2"}]
+        instance.list_users.return_value = [
+            {"id": 1, "fullName": "user1", "email": None},
+            {"id": 2, "fullName": "user2", "email": None}
+        ]
         TrelloImporterMock.return_value = instance
         response = client.post(url, content_type="application/json", data=json.dumps({"token": "token"}))
 
