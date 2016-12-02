@@ -42,6 +42,7 @@ class TrelloImporterViewSet(viewsets.ViewSet):
         importer = TrelloImporter(request.user, token)
         users = importer.list_users(project_id)
         for user in users:
+            user['user'] = None
             if not user['email']:
                 continue
 
@@ -51,9 +52,9 @@ class TrelloImporterViewSet(viewsets.ViewSet):
                 continue
 
             user['user'] = {
-                'id': user.id,
-                'fullname': user.get_full_name(),
-                'avatar': user.avatar,
+                'id': taiga_user.id,
+                'fullname': taiga_user.get_full_name(),
+                'avatar': taiga_user.avatar,
             }
         return response.Ok(users)
 
