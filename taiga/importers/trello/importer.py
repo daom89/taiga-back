@@ -119,12 +119,15 @@ class TrelloImporter:
                 "id": project['id'],
                 "name": project['name'],
                 "description": project['desc'],
-                "is_private": project['prefs']['permissionLevel'] != "public",
+                "is_private": is_private,
             })
         return projects
 
     def list_users(self, project_id):
-        return self._client.get("/board/{}/members".format(project_id), {"fields": "id,fullName"})
+        members = []
+        for member in self._client.get("/board/{}/members/all".format(project_id), {"fields": "id"}):
+            members.append(self._client.get("/member/{}".format(member['id']), {"fields": "id,fullName,email"}))
+        return members
 
     def import_project(self, project_id, options):
         data = self._client.get(

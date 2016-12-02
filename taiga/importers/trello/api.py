@@ -41,6 +41,20 @@ class TrelloImporterViewSet(viewsets.ViewSet):
 
         importer = TrelloImporter(request.user, token)
         users = importer.list_users(project_id)
+        for user in users:
+            if not user['email']:
+                continue
+
+            try:
+                taiga_user = User.objects.get(email=user['email'])
+            except User.DoesNotExist:
+                continue
+
+            user['user'] = {
+                'id': user.id,
+                'fullname': user.get_full_name(),
+                'avatar': user.avatar,
+            }
         return response.Ok(users)
 
     @list_route(methods=["POST"])
