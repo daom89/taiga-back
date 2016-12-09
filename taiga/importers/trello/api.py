@@ -20,7 +20,8 @@ from taiga.base.api import viewsets
 from taiga.base import response
 from taiga.base import exceptions as exc
 from taiga.base.decorators import list_route
-from taiga.users.models import AuthData
+from taiga.users.models import AuthData, User
+from taiga.users.services import get_user_photo_url
 
 from .importer import TrelloImporter
 from . import permissions, tasks
@@ -54,7 +55,7 @@ class TrelloImporterViewSet(viewsets.ViewSet):
             user['user'] = {
                 'id': taiga_user.id,
                 'fullname': taiga_user.get_full_name(),
-                'avatar': taiga_user.avatar,
+                'photo': get_user_phot_url(taiga_user),
             }
         return response.Ok(users)
 
