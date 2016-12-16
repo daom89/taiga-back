@@ -127,11 +127,11 @@ class TrelloImporter:
         members = []
         for member in self._client.get("/board/{}/members/all".format(project_id), {"fields": "id"}):
             user = self._client.get("/member/{}".format(member['id']), {"fields": "id,fullName,email"})
-            members.append(
-                "id": user['id']
+            members.append({
+                "id": user['id'],
                 "full_name": user['fullName'],
                 "email": user['email'],
-            )
+            })
         return members
 
     def import_project(self, project_id, options):
