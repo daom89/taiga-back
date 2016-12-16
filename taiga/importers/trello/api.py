@@ -22,6 +22,7 @@ from taiga.base import exceptions as exc
 from taiga.base.decorators import list_route
 from taiga.users.models import AuthData, User
 from taiga.users.services import get_user_photo_url
+from taiga.users.gravatar import get_user_gravatar_id
 
 from .importer import TrelloImporter
 from . import permissions, tasks
@@ -54,8 +55,9 @@ class TrelloImporterViewSet(viewsets.ViewSet):
 
             user['user'] = {
                 'id': taiga_user.id,
-                'fullname': taiga_user.get_full_name(),
-                'photo': get_user_phot_url(taiga_user),
+                'full_name': taiga_user.get_full_name(),
+                'gravatar_id': get_user_gravatar_id(taiga_user),
+                'photo': get_user_photo_url(taiga_user),
             }
         return response.Ok(users)
 
@@ -89,7 +91,7 @@ class TrelloImporterViewSet(viewsets.ViewSet):
 
         importer = TrelloImporter(request.user, token)
         project = importer.import_project(project_id, options)
-        return response.Ok(project)
+        return response.Ok(ProjectSerializer(project).data)
 
 
     @list_route(methods=["GET"])

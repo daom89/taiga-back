@@ -126,7 +126,12 @@ class TrelloImporter:
     def list_users(self, project_id):
         members = []
         for member in self._client.get("/board/{}/members/all".format(project_id), {"fields": "id"}):
-            members.append(self._client.get("/member/{}".format(member['id']), {"fields": "id,fullName,email"}))
+            user = self._client.get("/member/{}".format(member['id']), {"fields": "id,fullName,email"})
+            members.append(
+                "id": user['id']
+                "full_name": user['fullName'],
+                "email": user['email'],
+            )
         return members
 
     def import_project(self, project_id, options):
@@ -154,6 +159,7 @@ class TrelloImporter:
         self._cleanup(project, options)
         Timeline.objects.filter(project=project).delete()
         rebuild_timeline(None, None, project.id)
+        return project
 
     def _import_project_data(self, data, options):
         board = data
