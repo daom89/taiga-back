@@ -23,6 +23,7 @@ from taiga.base.decorators import list_route
 from taiga.users.models import AuthData, User
 from taiga.users.services import get_user_photo_url
 from taiga.users.gravatar import get_user_gravatar_id
+from taiga.projects.serializers import ProjectSerializer
 
 from .importer import TrelloImporter
 from . import permissions, tasks
@@ -91,8 +92,14 @@ class TrelloImporterViewSet(viewsets.ViewSet):
 
         importer = TrelloImporter(request.user, token)
         project = importer.import_project(project_id, options)
-        return response.Ok(ProjectSerializer(project).data)
+        project_data = {
+            "slug": project.slug,
+            "my_permissions": ["view_us"],
+            "is_backlog_activated": project.is_backlog_activated,
+            "is_kanban_activated": project.is_kanban_activated,
+        }
 
+        return response.Ok(project_data)
 
     @list_route(methods=["GET"])
     def auth_url(self, request, *args, **kwargs):
