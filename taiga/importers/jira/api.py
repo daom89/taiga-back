@@ -35,13 +35,10 @@ class JiraImporterViewSet(viewsets.ViewSet):
     def _get_token(self, request):
         token_data = request.DATA.get('token', "").split(".")
 
-        with open(settings.JIRA_CERT_FILE, 'r') as key_cert_file:
-            key_cert_data = key_cert_file.read()
-
         token = {
             "access_token": token_data[0],
             "access_token_secret": token_data[1],
-            "key_cert": key_cert_data,
+            "key_cert": settings.JIRA_CERT,
             "consumer_key": settings.JIRA_CONSUMER_KEY
         }
         return token
@@ -126,13 +123,10 @@ class JiraImporterViewSet(viewsets.ViewSet):
         if not jira_url:
             raise exc.WrongArguments(_("The url param is needed"))
 
-        with open(settings.JIRA_CERT_FILE, 'r') as key_cert_file:
-            key_cert_data = key_cert_file.read()
-
         (oauth_token, oauth_secret, url) = JiraNormalImporter.get_auth_url(
             jira_url,
             settings.JIRA_CONSUMER_KEY,
-            key_cert_data,
+            settings.JIRA_CERT,
             True
         )
 
@@ -158,8 +152,6 @@ class JiraImporterViewSet(viewsets.ViewSet):
         self.check_permissions(request, "authorize", None)
 
         try:
-            with open(settings.JIRA_CERT_FILE, 'r') as key_cert_file:
-                key_cert_data = key_cert_file.read()
             oauth_data = request.user.auth_data.get(key="jira-oauth")
             oauth_token = oauth_data.extra['oauth_token']
             oauth_secret = oauth_data.extra['oauth_secret']
@@ -169,7 +161,7 @@ class JiraImporterViewSet(viewsets.ViewSet):
             jira_token = JiraNormalImporter.get_access_token(
                 server_url,
                 settings.JIRA_CONSUMER_KEY,
-                key_cert_data,
+                settings.JIRA_CERT,
                 oauth_token,
                 oauth_secret,
                 True
