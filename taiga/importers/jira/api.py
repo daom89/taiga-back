@@ -55,7 +55,7 @@ class JiraImporterViewSet(viewsets.ViewSet):
             raise exc.WrongArguments(_("The project param is needed"))
 
         importer = JiraNormalImporter(request.user, url, token)
-        users = importer.list_users(project_id)
+        users = importer.list_users()
         for user in users:
             user['user'] = None
             if not user['email']:
@@ -105,6 +105,28 @@ class JiraImporterViewSet(viewsets.ViewSet):
             return response.Accepted({"jira_import_id": task.id})
 
         importer = JiraNormalImporter(request.user, url, token)
+
+        types_bindings = {
+            "epic": [],
+            "us": [],
+            "task": [],
+            "issue": [],
+        }
+
+        # Set the type bindings
+        for issue_type in importer.list_issue_types(project_id):
+            if issue_type['subtask']:
+                types_bindings['task'].append(issue_type)
+            elif issue_type['name'].upper() == "EPIC":
+                types_bindings["epic"].append(issue_type)
+            elif issue_type['name'].upper() in ["US", "USERSTORY", "USER STORY"]:
+                types_bindings["us"].append(issue_type)
+            elif issue_type['name'].upper() in ["ISSUE", "BUG", "ENHANCEMENT"]:
+                types_bindings["issue"].append(issue_type)
+            else:
+                types_bindings["us"].append(issue_type)
+        options["types_bindings"] = types_bindings
+
         project = importer.import_project(project_id, options)
         project_data = {
             "slug": project.slug,

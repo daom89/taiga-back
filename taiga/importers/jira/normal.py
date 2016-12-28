@@ -31,6 +31,7 @@ class JiraNormalImporter(JiraImporterCommon):
         Timeline.objects.filter(project=project).delete()
         rebuild_timeline(None, None, project.id)
         recalc_reference_counter(project)
+        return project
 
     def _import_project_data(self, project_id, options):
         project = self._client.get("/project/{}".format(project_id))

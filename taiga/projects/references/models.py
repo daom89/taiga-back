@@ -73,7 +73,11 @@ def recalc_reference_counter(project):
     max_ref_us = project.user_stories.all().aggregate(max=models.Max('ref'))
     max_ref_task = project.tasks.all().aggregate(max=models.Max('ref'))
     max_ref_issue = project.issues.all().aggregate(max=models.Max('ref'))
-    max_value = max(filter(lambda x: x is not None, [max_ref_us['max'], max_ref_task['max'], max_ref_issue['max']]))
+    max_references = list(filter(lambda x: x is not None, [max_ref_us['max'], max_ref_task['max'], max_ref_issue['max']]))
+
+    max_value = 0
+    if len(max_references) > 0:
+        max_value = max(max_references)
     seq.set_max(seqname, max_value)
 
 

@@ -165,7 +165,7 @@ class JiraImporterCommon:
                 "key": user['key']
             })
             result.append({
-                "key": user_data['key'],
+                "id": user_data['key'],
                 "full_name": user_data['displayName'],
                 "email": user_data['emailAddress'],
             })
