@@ -23,14 +23,14 @@ from django.utils.translation import ugettext as _
 
 from taiga.base.mails import mail_builder
 from taiga.celery import app
-from .importer import TrelloImporter
+from .normal import JiraNormalImporter
 
 logger = logging.getLogger('taiga.importers.trello')
 
 
 @app.task(bind=True)
 def import_project(self, user, token, project_id, options):
-    importer = TrelloImporter(user, token)
+    importer = JiraNormalImporter(user, token)
     try:
         project = importer.import_project(project_id, options)
     except Exception as e:
