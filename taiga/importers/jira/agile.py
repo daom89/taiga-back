@@ -107,7 +107,8 @@ class JiraAgileImporter(JiraImporterCommon):
             name=project['name'],
             description=project.get('description', ''),
             owner=self._user,
-            creation_template=project_template
+            creation_template=project_template,
+            is_private=options.get('is_private', False),
         )
 
         self._create_custom_fields(project)

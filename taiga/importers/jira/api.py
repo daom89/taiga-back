@@ -93,16 +93,14 @@ class JiraImporterViewSet(viewsets.ViewSet):
         if not project_id:
             raise exc.WrongArguments(_("The project param is needed"))
 
+        project_type = request.DATA.get("project_type", "scrum")
+
         options = {
             "template": request.DATA.get('template', "kanban"),
             "users_bindings": request.DATA.get("users_bindings", {}),
             "keep_external_reference": request.DATA.get("keep_external_reference", False),
             "is_private": request.DATA.get("is_private", False),
         }
-
-        if settings.CELERY_ENABLED:
-            task = tasks.import_project.delay(request.user, token, project_id, options)
-            return response.Accepted({"jira_import_id": task.id})
 
         importer = JiraNormalImporter(request.user, url, token)
 
@@ -113,19 +111,34 @@ class JiraImporterViewSet(viewsets.ViewSet):
             "issue": [],
         }
 
-        # Set the type bindings
         for issue_type in importer.list_issue_types(project_id):
-            if issue_type['subtask']:
-                types_bindings['task'].append(issue_type)
-            elif issue_type['name'].upper() == "EPIC":
-                types_bindings["epic"].append(issue_type)
-            elif issue_type['name'].upper() in ["US", "USERSTORY", "USER STORY"]:
-                types_bindings["us"].append(issue_type)
-            elif issue_type['name'].upper() in ["ISSUE", "BUG", "ENHANCEMENT"]:
+            if project_type in ['scrum', 'kanban']:
+                # Set the type bindings
+                if issue_type['subtask']:
+                    types_bindings['task'].append(issue_type)
+                elif issue_type['name'].upper() == "EPIC":
+                    types_bindings["epic"].append(issue_type)
+                elif issue_type['name'].upper() in ["US", "USERSTORY", "USER STORY"]:
+                    types_bindings["us"].append(issue_type)
+                elif issue_type['name'].upper() in ["ISSUE", "BUG", "ENHANCEMENT"]:
+                    types_bindings["issue"].append(issue_type)
+                else:
+                    types_bindings["us"].append(issue_type)
+            elif project_type == "issues":
+                # Set the type bindings
+                if issue_type['subtask']:
+                    continue
+                types_bindings["issue"].append(issue_type)
+            elif project_type == "issues-with-subissues":
                 types_bindings["issue"].append(issue_type)
             else:
-                types_bindings["us"].append(issue_type)
+                raise exc.WrongArguments(_("Invalid project_type {}").format(project_type))
+
         options["types_bindings"] = types_bindings
+
+        if settings.CELERY_ENABLED:
+            task = tasks.import_project.delay(request.user, token, project_id, options)
+            return response.Accepted({"jira_import_id": task.id})
 
         project = importer.import_project(project_id, options)
         project_data = {
