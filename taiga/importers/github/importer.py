@@ -58,12 +58,29 @@ class GithubImporter:
         self._me = self._client.get("/user")
 
     def list_projects(self):
-        repos = self._client.get("/user/repos")
-        return [{"id": repo['full_name'], "name": repo['full_name']} for repo in repos]
+        projects = []
+        page = 1
+        while True:
+            repos = self._client.get("/user/repos", {
+                "sort": "full_name",
+                "page": page,
+                "per_page": 100
+            })
+            page += 1
+
+            for repo in repos:
+                projects.append({"id": repo['full_name'], "name": repo['full_name']})
+
+            if len(repos) < 100:
+                break
+        return projects
 
     def list_users(self, project_full_name):
         collaborators = self._client.get("/repos/{}/collaborators".format(project_full_name))
-        return [{"id": u['id'], "username": u['login'], "full_name": u.get('name', u['login']), "detected_user": self._get_user(u)} for u in collaborators]
+        return [{"id": u['id'],
+                 "username": u['login'],
+                 "full_name": u.get('name', u['login']),
+                 "detected_user": self._get_user(u) } for u in collaborators]
 
     def _get_user(self, user, default=None):
         if not user:
@@ -93,6 +110,7 @@ class GithubImporter:
         Timeline.objects.filter(project=project).delete()
         rebuild_timeline(None, None, project.id)
         recalc_reference_counter(project)
+        return project
 
     def _import_project_data(self, repo, options):
         users_bindings = options.get('users_bindings', {})
@@ -156,7 +174,8 @@ class GithubImporter:
             description=repo['description'],
             owner=self._user,
             tags_colors=tags_colors,
-            creation_template=project_template
+            creation_template=project_template,
+            is_private=options.get('is_private', False),
         )
 
         if 'organization' in repo and repo['organization'].get('avatar_url', None):
@@ -247,7 +266,6 @@ class GithubImporter:
                 )
 
                 take_snapshot(us, comment="", user=None, delete=False)
-                #self._import_history(us, issue, options)
 
             if len(issues) < 100:
                 break
@@ -306,7 +324,6 @@ class GithubImporter:
                 )
 
                 take_snapshot(taiga_issue, comment="", user=None, delete=False)
-                #self._import_history(taiga_issue, issue, options)
 
             if len(issues) < 100:
                 break
@@ -489,8 +506,10 @@ class GithubImporter:
         return result
 
     @classmethod
-    def get_auth_url(cls, client_id):
-        return "https://github.com/login/oauth/authorize?client_id={}&scope=user,repo".format(client_id)
+    def get_auth_url(cls, client_id, callback_uri=None):
+        if callback_uri is None:
+            return "https://github.com/login/oauth/authorize?client_id={}&scope=user,repo".format(client_id)
+        return "https://github.com/login/oauth/authorize?client_id={}&scope=user,repo&redirect_uri={}".format(client_id, callback_uri)
 
     @classmethod
     def get_access_token(cls, client_id, client_secret, code):
@@ -499,6 +518,7 @@ class GithubImporter:
             "client_secret": client_secret,
             "code": code,
         })
+        print(result.content)
         return dict(parse_qsl(result.content))[b'access_token'].decode('utf-8')
 
 

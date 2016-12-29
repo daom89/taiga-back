@@ -20,7 +20,7 @@ from django.core.management.base import BaseCommand
 from django.conf import settings
 from django.db.models import Q
 
-from taiga.importers.github import GithubImporter
+from taiga.importers.github.importer import GithubImporter
 from taiga.users.models import User, AuthData
 from taiga.projects.services import projects as service
 
