@@ -25,7 +25,7 @@ from taiga.users.services import get_user_photo_url
 from taiga.users.gravatar import get_user_gravatar_id
 
 from .normal import JiraNormalImporter
-#from .agile import JiraAgileImporter
+from .agile import JiraAgileImporter
 from . import permissions, tasks
 
 
@@ -80,8 +80,10 @@ class JiraImporterViewSet(viewsets.ViewSet):
         url = request.DATA.get('url', None)
         token = self._get_token(request)
         importer = JiraNormalImporter(request.user, url, token)
+        agile_importer = JiraAgileImporter(request.user, url, token)
         projects = importer.list_projects()
-        return response.Ok(projects)
+        boards = agile_importer.list_projects()
+        return response.Ok(sorted(projects + boards, key=lambda x: x['name']))
 
     @list_route(methods=["POST"])
     def import_project(self, request, *args, **kwargs):

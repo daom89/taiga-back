@@ -15,7 +15,9 @@ from .common import JiraImporterCommon
 
 class JiraAgileImporter(JiraImporterCommon):
     def list_projects(self):
-        return self._client.get_agile('/board')['values']
+        return [{"id": board['id'],
+                 "name": board['name'],
+                 "type": "board"} for board in self._client.get_agile('/board')['values']]
 
     def import_project(self, project_id, options=None):
         project = self._import_project_data(project_id, options)

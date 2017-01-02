@@ -15,7 +15,9 @@ from .common import JiraImporterCommon
 
 class JiraNormalImporter(JiraImporterCommon):
     def list_projects(self):
-        return self._client.get('/project')
+        return [{"id": project['id'],
+                 "name": project['name'],
+                 "type": "project"} for project in self._client.get('/project')]
 
     def list_issue_types(self, project_id):
         statuses = self._client.get("/project/{}/statuses".format(project_id))
