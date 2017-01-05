@@ -209,13 +209,14 @@ def test_import_trello_project_with_celery_enabled(client, settings):
     settings.CELERY_ENABLED = True
 
     user = f.UserFactory.create()
+    project = f.ProjectFactory.create(slug="async-imported-project")
     client.login(user)
 
     url = reverse("importers-trello-import-project")
 
     with mock.patch('taiga.importers.trello.tasks.TrelloImporter') as TrelloImporterMock:
         instance = mock.Mock()
-        instance.import_project.return_value = {"id": 1}
+        instance.import_project.return_value = project
         TrelloImporterMock.return_value = instance
         response = client.post(url, content_type="application/json", data=json.dumps({"token": "token", "project": 1}))
 
@@ -227,16 +228,17 @@ def test_import_trello_project_with_celery_disabled(client, settings):
     settings.CELERY_ENABLED = False
 
     user = f.UserFactory.create()
+    project = f.ProjectFactory.create(slug="imported-project")
     client.login(user)
 
     url = reverse("importers-trello-import-project")
 
     with mock.patch('taiga.importers.trello.api.TrelloImporter') as TrelloImporterMock:
         instance = mock.Mock()
-        instance.import_project.return_value = {"id": 1}
+        instance.import_project.return_value = project
         TrelloImporterMock.return_value = instance
         response = client.post(url, content_type="application/json", data=json.dumps({"token": "token", "project": 1}))
 
     assert response.status_code == 200
-    assert "id" in response.data
-    assert response.data['id'] == 1
+    assert "slug" in response.data
+    assert response.data['slug'] == "imported-project"
